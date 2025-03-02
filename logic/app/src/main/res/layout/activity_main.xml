@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <EditText
+        android:id="@+id/budgetInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter budget amount"
+        android:layout_margin="8dp"/>
+
+    <Button
+        android:id="@+id/endDateButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/budgetInput"
+        android:layout_margin="8dp"
+        android:text="Pick End Date"/>
+
+    <Button
+        android:id="@+id/setBudgetButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/endDateButton"
+        android:layout_margin="8dp"
+        android:text="Set Budget"/>
+
+    <TextView
+        android:id="@+id/budgetTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/setBudgetButton"
+        android:layout_margin="8dp"
+        android:text="Budget summary will appear here"/>
+
+    <EditText
+        android:id="@+id/descriptionInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/budgetTextView"
+        android:layout_margin="8dp"
+        android:hint="Expense description"/>
+
+    <EditText
+        android:id="@+id/amountInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/descriptionInput"
+        android:layout_margin="8dp"
+        android:hint="Expense amount"/>
+
+    <EditText
+        android:id="@+id/categoryInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/amountInput"
+        android:layout_margin="8dp"
+        android:hint="Expense category"/>
+
+    <Button
+        android:id="@+id/addExpenseButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/categoryInput"
+        android:layout_margin="8dp"
+        android:text="Add Expense"/>
+
+    <Button
+        android:id="@+id/endBudgetButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/addExpenseButton"
+        android:layout_margin="8dp"
+        android:text="End Budget"/>
+
+    <TextView
+        android:id="@+id/expensesTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/endBudgetButton"
+        android:layout_margin="8dp"
+        android:text="Expenses will appear here"/>
+
+</RelativeLayout>
