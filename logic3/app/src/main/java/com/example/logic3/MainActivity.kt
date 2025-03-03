@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.example.logic3
 
 import android.os.Bundle
@@ -21,6 +23,7 @@ import java.time.format.DateTimeFormatter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.ui.draw.clip
@@ -31,15 +34,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import android.content.Context
-import android.database.Cursor
-import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
-import android.content.ContentValues
-import java.time.temporal.ChronoUnit
-import androidx.compose.material3.Typography
-import androidx.compose.material3.MaterialTheme
 import kotlinx.coroutines.launch
+import android.app.DatePickerDialog
+import java.util.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,7 +80,7 @@ fun BudgetTrackerApp() {
 
     // Snackbar for user feedback
     val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope() // **Get a coroutine scope**
 
     // Parse budget summary and expense list
     val budgetSummary = remember(refreshTrigger) { tracker.getBudgetSummary().split("\n") }
@@ -100,7 +97,6 @@ fun BudgetTrackerApp() {
             Expense(0, description, amount, category, LocalDate.parse(date)) // ID is not parsed from string, assuming auto-increment by DB
         }
     }
-
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }, // Add SnackbarHost
@@ -160,7 +156,7 @@ fun BudgetTrackerApp() {
                             expenseCategory = ""
                             refreshData()
                             // Show Snackbar for confirmation
-                            coroutineScope.launch { // **Launch coroutine here**
+                            coroutineScope.launch{ // **Launch coroutine here**
                                 snackbarHostState.showSnackbar("Expense added successfully!")
                             }
                         } else {
@@ -170,33 +166,60 @@ fun BudgetTrackerApp() {
                         }
                     }
                 )
-                2 -> BudgetSetupScreen(
-                    budgetAmount = budgetAmount,
-                    onBudgetAmountChange = { budgetAmount = it },
-                    selectedEndDate = selectedEndDate, // Pass selectedEndDate state
-                    onEndDateChange = { selectedEndDate = it }, // Pass the new callback to update selectedEndDate
-                    onSetBudget = {
-                        val amount = budgetAmount.toDoubleOrNull()
-                        if (amount != null && selectedEndDate != null) {
-                            tracker.setBudget(amount, selectedEndDate!!)
+                2 -> {
+                    // Create the date picker within the composable function call for the correct context
+                    val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                    val formattedDate = selectedEndDate?.format(dateFormatter) ?: "Select Date"
+
+                    BudgetSetupScreen(
+                        budgetAmount = budgetAmount,
+                        onBudgetAmountChange = { budgetAmount = it },
+                        selectedEndDate = selectedEndDate,
+                        displayDate = formattedDate,
+                        onShowDatePicker = {
+                            // Create the date picker on demand when the button is clicked
+                            val calendar = Calendar.getInstance()
+
+                            // Set the calendar to the selected date if one exists, otherwise use current date
+                            selectedEndDate?.let {
+                                calendar.set(it.year, it.monthValue - 1, it.dayOfMonth)
+                            }
+
+                            val datePickerDialog = DatePickerDialog(
+                                context,
+                                { _, year, month, dayOfMonth ->
+                                    selectedEndDate = LocalDate.of(year, month + 1, dayOfMonth)
+                                },
+                                calendar.get(Calendar.YEAR),
+                                calendar.get(Calendar.MONTH),
+                                calendar.get(Calendar.DAY_OF_MONTH)
+                            )
+
+                            datePickerDialog.show()
+                        },
+                        onSetBudget = {
+                            val amount = budgetAmount.toDoubleOrNull()
+                            if (amount != null && selectedEndDate != null) {
+                                tracker.setBudget(amount, selectedEndDate!!)
+                                refreshData()
+                                coroutineScope.launch { // **Launch coroutine here**
+                                    snackbarHostState.showSnackbar("Budget set successfully!")
+                                }
+                            } else {
+                                coroutineScope.launch { // **Launch coroutine here**
+                                    snackbarHostState.showSnackbar("Invalid budget amount or end date.")
+                                }
+                            }
+                        },
+                        onEndBudget = {
+                            val remainingAmount = tracker.getTotalRemainingBudget()
+                            coroutineScope.launch { // **Launch coroutine here**
+                                snackbarHostState.showSnackbar("Budget ended. You have $${"%.2f".format(remainingAmount)} remaining.")
+                            }
                             refreshData()
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Budget set successfully!")
-                            }
-                        } else {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Invalid budget amount or end date.")
-                            }
                         }
-                    },
-                    onEndBudget = {
-                        val remainingAmount = tracker.getTotalRemainingBudget()
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Budget ended. You have $${"%.2f".format(remainingAmount)} remaining.")
-                        }
-                        refreshData()
-                    }
-                )
+                    )
+                }
                 3 -> ReportsScreen(expensesList)
             }
         }
@@ -456,13 +479,13 @@ fun AddExpenseScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BudgetSetupScreen(
     budgetAmount: String,
     onBudgetAmountChange: (String) -> Unit,
-    selectedEndDate: LocalDate?, // We will still need to hold the selected date, but it will be updated from the inline picker
-    onEndDateChange: (LocalDate?) -> Unit, // Callback to update the selectedEndDate in BudgetTrackerApp
+    selectedEndDate: LocalDate?,
+    displayDate: String,
+    onShowDatePicker: () -> Unit,
     onSetBudget: () -> Unit,
     onEndBudget: () -> Unit
 ) {
@@ -491,39 +514,31 @@ fun BudgetSetupScreen(
             )
         )
 
-        // Inline DatePicker
-        Text(
-            text = "Select Budget End Date",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedEndDate?.toEpochDay()?.let { it * 24 * 60 * 60 * 1000 } ?: System.currentTimeMillis() // Initialize with existing selectedEndDate or current time
-        )
-        DatePicker(
-            state = datePickerState,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Update selectedEndDate when the date in DatePicker changes
-        LaunchedEffect(datePickerState.selectedDateMillis) {
-            datePickerState.selectedDateMillis?.let { millis ->
-                val localDate = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
-                onEndDateChange(localDate) // Update the selectedEndDate in BudgetTrackerApp
-            } ?: onEndDateChange(null) // If no date selected (shouldn't happen in DatePicker, but for safety)
-        }
-
-
+        // Date selection field - modified to show formatted date and be more visibly clickable
         OutlinedTextField(
-            value = selectedEndDate?.toString() ?: "", // Display selected date from state
-            onValueChange = { }, // Read-only, date is set by DatePicker
+            value = displayDate,
+            onValueChange = { /* Readonly field, handled by date picker */ },
             label = { Text("End Date") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onShowDatePicker),
             leadingIcon = { Icon(Icons.Default.DateRange, contentDescription = "End Date") },
+            trailingIcon = {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Select Date",
+                    modifier = Modifier.clickable(onClick = onShowDatePicker)
+                )
+            },
             readOnly = true,
-            enabled = false // Visually indicate it's set by the DatePicker and not directly editable
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                disabledTextColor = LocalContentColor.current,
+                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         )
-
 
         Spacer(modifier = Modifier.height(16.dp))
 
